@@ -1,0 +1,42 @@
+{
+  "name": "folio-study",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "admin": "tsx scripts/create-admin.ts",
+    "qa:setup": "tsx scripts/qa-setup.ts",
+    "qa:serve": "tsx scripts/qa-serve.ts",
+    "qa:test": "tsx scripts/acceptance-test.ts",
+    "qa:content": "tsx scripts/content-acceptance.ts",
+    "qa:exercises": "tsx scripts/exercise-acceptance.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "@next/env": "^16.4.3",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "nodemailer": "^10.2.1",
+    "pdf-parse": "^2.4.5",
+    "postgres": "^3.4.7",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^24.0.0",
+    "@types/nodemailer": "^7.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
