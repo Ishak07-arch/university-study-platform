@@ -57,25 +57,57 @@ For repeatable HTTP acceptance checks, stop the normal server and run `npm run q
 
 ## Configure production
 
-Use a persistent hosted PostgreSQL database, one initial application instance to apply the idempotent schema/seed, and your deployment provider's secret storage:
+Use hosted PostgreSQL and your deployment provider's server-side secret storage. Hosted startup never runs migrations or seeds, including development against a remote database. Apply migrations explicitly before releasing the app:
 
 ```dotenv
 DATABASE_URL=postgresql://...
+DATABASE_CONNECTION_MODE=session
+DATABASE_POOL_MAX=1
+DATABASE_SSL=verify-full
 APP_URL=https://your-domain.example
 ENABLE_DEMO=false
 SMTP_URL=smtps://...
 MAIL_FROM=Folio <hello@your-domain.example>
 ```
 
-`APP_URL` must exactly match the public origin. HTTPS makes the session cookie Secure. The database must be server-only; never expose its connection string to the browser. Apply database least-privilege permissions, automated backups, and trusted-proxy request throttling at your deployment layer. Use versioned migrations for future schema changes; the initial migration is intentionally small and idempotent.
+`APP_URL` must exactly match the public origin. HTTPS makes the session cookie Secure. Never prefix database credentials with `NEXT_PUBLIC_`. Apply database least-privilege permissions, backups, and trusted-proxy request throttling.
+
+### Migration command
+
+```powershell
+npm run db -- migrate
+# Equivalent default: npm run db
+# Optional sample curriculum for a deliberate staging/demo setup:
+npm run db -- seed --confirm-demo-seed
+```
+
+The hosted-only CLI uses `DATABASE_MIGRATION_URL` if set, otherwise `DATABASE_URL`; it refuses to fall back to PGlite. It loads Next environment files according to `NODE_ENV`, including `.env.local`; existing shell variables take precedence. Set deployment secrets explicitly and verify the intended target. Keep the privileged migration URI in the deployment job, separate from the app's least-privilege runtime URI. Runtime credentials need no schema-creation permission. Do not attach migrations or seeding to `build`, `start`, or request handlers.
+
+The runner takes a transaction advisory lock, applies all pending files in numeric order in one transaction, and records checksums in `public.folio_schema_migrations`. Repeated runs skip applied files; changed/missing/out-of-order history is rejected. Failure rolls back DDL and ledger together. Checksums normalise Windows/Linux line endings. Add future files to the manifest in `src/server/migrations.ts`; never edit applied migrations. Back up an existing database created by the old startup path and verify its schema matches these files before establishing its ledger: `IF NOT EXISTS` preserves data but does not repair incompatible existing definitions.
+
+**SQL audit:** `001` orders parent tables before foreign keys; `002` extends resources before creating chunks; `003` extends existing questions/sessions/attempts. All additions are guarded. Existing keys/checks, partial unique fingerprint index and English full-text GIN index use built-in PostgreSQL features; no extensions or superuser-only statements are required. `questions.source_chunk_id` intentionally lacks a foreign key so re-extraction can invalidate sources without deleting question history. No SQL edits were required. DDL and ordinary indexes take locks; migrations use a 10-second lock timeout and 120-second statement timeout. Run in a quiet deployment window; plan large future indexes separately.
+
+Schema-only migration intentionally leaves an empty database. Existing onboarding/admin provisioning requires `group-a`; the preview also assumes `demo-group` and curriculum records. Provision institutional data with the identifiers the current app expects before enabling traffic, or explicitly opt into sample seeding for staging. Seeding requires the confirmation flag and matching migration ledger, preserves the existing seed's demo-group migration, and creates no admin credentials. It is not an institution-data importer. Authentication is unchanged.
+
+### Supabase connection choice
+
+Use the **session pooler on port 5432** when IPv4 is needed, including the upcoming Vercel setup. **Direct port 5432** is also compatible where the host can reach it, and is preferred for the migration job; session mode is its IPv4 alternative. Copy the URI from Supabase's Connect panel, preserving its host/username. `DATABASE_CONNECTION_MODE` accepts `session` or `direct`; it describes the endpoint, never rewrites it. Known Supabase port-6543 transaction endpoints are rejected.
+
+Avoid transaction pooling for this exact implementation: Supabase documents Postgres.js pipelining problems, and `max_pipeline: 0` breaks `sql.begin()`. `prepare: false` alone does not fix that. This adapter retains `sql.begin()` and disables prepared statements; changing pooling modes requires a separate compatibility test. See [Supabase Postgres.js guidance](https://supabase.com/docs/guides/database/postgres-js) and [connection modes](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+The pool defaults to one connection per warm instance (`DATABASE_POOL_MAX`, 1–10), with a 10-second connection timeout, 20-second idle timeout, five-minute connection lifetime and 30-second application statement timeout. Budget across all Vercel instances: session pooling holds backend connections while clients remain connected. CLI commands always use one connection and close it on exit. URI query parameters accept only optional `sslmode=verify-full`; use the documented environment variables for other settings and do not override Postgres.js pipelining through `PGMAX_PIPELINE`.
+
+TLS verifies the server certificate and hostname. If needed, download the endpoint's root CA from Supabase Database settings and supply its **PEM contents** in `DATABASE_SSL_CA` (newlines or escaped `\n`, not a path). Never disable hosted certificate verification. `DATABASE_SSL=disable` is accepted only for loopback PostgreSQL outside production; it does not affect PGlite. See [Supabase SSL enforcement](https://supabase.com/docs/guides/platform/ssl-enforcement).
+
+Before migrating into Supabase, disable the Data API for this server-only app, or remove `public` from exposed schemas and remove API-role access. These existing tables contain private auth/student data, rely on application authorization, and have no Supabase RLS policies. Do not expose them to anonymous/authenticated Data API roles. No Supabase SDK/Auth is installed. Live Supabase connectivity, TLS, permissions and transactions remain deployment checks; migration tests here use PGlite.
 
 Sign-up, sign-in, sign-out, session protection, and password resets are implemented. Actual reset-email delivery requires `SMTP_URL`. In development without SMTP, messages are written to `.data/mail/*.json` for local testing; reset tokens are never returned by the API or displayed in the UI. Production does not write mail files. SMTP delivery and a hosted PostgreSQL deployment have not been verified in this workspace.
 
 If production SMTP is missing or delivery fails, password reset displays a friendly unavailable message; it never claims a message was sent. Configure an authenticated SMTP URL and a verified sender in `MAIL_FROM` before rollout. Local captured mail is development-only.
 
-Build with `npm run build`, then start with `npm start` using the production environment above. The start command binds to loopback; expose it through your hosting provider's HTTPS reverse proxy. Keep `db/001-foundation.sql` in the deployed project: the first database connection applies it and seeds the curriculum idempotently. Subsequent starts preserve accounts and activity.
+Build with `npm run build`, then run `npm start` after migrations and data provisioning. The start command binds to loopback; expose it through your hosting provider's HTTPS reverse proxy. Keep all SQL files with the migration job. Hosted startup performs no DDL or seed writes.
 
-To preview the production build locally with PGlite, stop the dev server, set `ENABLE_DEMO=true`, then run `npm start`. Do not run two processes against `.data/folio`.
+For a production preview with PGlite, initialize the database first through development (or `npm run qa:setup` for QA), stop that process, set `ENABLE_DEMO=true`, then run `npm start`. Production previews do not migrate or seed either. Development PGlite keeps its original automatic schema/seed workflow. Do not run two processes against `.data/folio`. PGlite is unsuitable for Vercel's ephemeral filesystem; the PDF child-process/storage requirements below still need a separate hosting review.
 
 ## Scope
 
@@ -104,7 +136,7 @@ Supply a key and a Responses API model with structured-output support available 
 
 Retrieval uses PostgreSQL English full-text search within the current authorized lesson. Answers must reference retrieved chunk IDs and matching source quotations. Source names and page numbers come from the database, never the model. Unpublished, archived, moved, or reprocessed sources are checked again before returning the answer. These checks validate citation provenance, not the factual accuracy of every generated explanation. Review the visible source passage when needed.
 
-`db/002-course-content.sql` runs idempotently after the original schema/seed. Files are stored as PostgreSQL binary values alongside metadata and chunks, so database backups cover the originals. Legacy worksheets remain unchanged. PDFs and UTF-8 text are limited to 5 MB; PDFs to 150 pages and extracted text to 600,000 characters. Scans, encrypted PDFs, complex equations, and unusual layouts may require a cleaned text version. Page numbers are physical PDF page indices; text notes have no invented page number.
+`db/002-course-content.sql` follows the foundation schema in the explicit hosted migration command (automatically in local development). Files are stored as PostgreSQL binary values alongside metadata and chunks, so database backups cover the originals. Legacy worksheets remain unchanged. PDFs and UTF-8 text are limited to 5 MB; PDFs to 150 pages and extracted text to 600,000 characters. Scans, encrypted PDFs, complex equations, and unusual layouts may require a cleaned text version. Page numbers are physical PDF page indices; text notes have no invented page number.
 
 Extraction runs only on an explicit admin request, in a separate Node process with a 20-second limit and a bounded JS heap/output. Keep `scripts/extract-pdf.mjs`, `db/`, and production dependencies in deployments. The Node host must allow child processes and requests lasting at least 30 seconds. An interrupted extraction can be retried after one minute. This is a small synchronous ingestion request, not a durable job queue or a hardened OS sandbox. Normal navigation never runs extraction or waits for AI.
 
@@ -128,4 +160,4 @@ Every submitted valid answer is checked server-side and recorded with its attemp
 
 Original Phase 1 reward values remain: 5 XP for a first correct answer or 7 after correction. Generated variations share one reward per lesson/template, and manual revisions share the original question reward. Sessions containing Phase 2 questions have one completion reward per subject, preventing rewards from shuffled/generated sets. Seed-only sessions keep their original reward keys. Generated variations are excluded from practice-coverage counts to avoid changing the denominator on every generation; enabled seed/manual questions contribute. XP remains informal practice feedback, never academic credit.
 
-`db/003-exercises.sql` is additive/idempotent and runs after the earlier migrations. Keep the whole `db/` directory in deployments. `npm test` covers typed attempts, corrections, recurrence, template arithmetic, cache/reward replay, ownership, withdrawals, malformed generation and outages. With the isolated QA server, run `npm run qa:exercises` to check the HTTP workflow with AI disabled. Restart it with `npm run qa:serve -- --tutor-fixture`, then run `npm run qa:exercises -- --fixture` for deterministic generation/similar-exercise checks. This QA-only transport also returns exercise blueprints and makes no live OpenAI calls. Hosted PostgreSQL and live provider quality still require deployment verification.
+`db/003-exercises.sql` is additive/idempotent and follows the earlier migrations in the explicit hosted command (automatically in local development). Keep the whole `db/` directory with migration jobs. `npm test` covers typed attempts, corrections, recurrence, template arithmetic, cache/reward replay, ownership, withdrawals, malformed generation and outages. With the isolated QA server, run `npm run qa:exercises` to check the HTTP workflow with AI disabled. Restart it with `npm run qa:serve -- --tutor-fixture`, then run `npm run qa:exercises -- --fixture` for deterministic generation/similar-exercise checks. This QA-only transport also returns exercise blueprints and makes no live OpenAI calls. Hosted PostgreSQL and live provider quality still require deployment verification.

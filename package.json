@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "admin": "tsx scripts/create-admin.ts",
+    "db": "tsx scripts/database.ts",
     "qa:setup": "tsx scripts/qa-setup.ts",
     "qa:serve": "tsx scripts/qa-serve.ts",
     "qa:test": "tsx scripts/acceptance-test.ts",

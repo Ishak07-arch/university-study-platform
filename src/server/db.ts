@@ -1,9 +1,9 @@
 import { PGlite } from "@electric-sql/pglite";
-import postgres from "postgres";
 import { readFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { seed } from "./seed";
 import { dataDirectory } from "./config";
+import { openHostedDatabase } from "./postgres";
 
 export interface Db {
   query<T = Record<string, unknown>>(
@@ -14,18 +14,6 @@ export interface Db {
   transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T>;
 }
 const globalDb = globalThis as unknown as { folioDb?: Promise<Db> };
-function adaptPg(sql: ReturnType<typeof postgres>): Db {
-  return {
-    query: async <T>(q: string, p: unknown[] = []) => ({
-      rows: (await sql.unsafe(q, p as never[])) as unknown as T[],
-    }),
-    exec: async (q) => sql.unsafe(q),
-    transaction: async (fn) =>
-      sql.begin((tx) =>
-        fn(adaptPg(tx as unknown as ReturnType<typeof postgres>)),
-      ) as never,
-  };
-}
 export function getDb(): Promise<Db> {
   if (!globalDb.folioDb)
     globalDb.folioDb = (async () => {
@@ -38,7 +26,8 @@ export function getDb(): Promise<Db> {
           throw new Error(
             "Set APP_URL to your public HTTPS origin for production.",
           );
-        db = adaptPg(postgres(process.env.DATABASE_URL, { max: 5 }));
+        // Hosted runtime never performs DDL or seeds data, including development against a remote DB.
+        return openHostedDatabase(process.env.DATABASE_URL).db;
       } else {
         if (
           process.env.NODE_ENV === "production" &&
@@ -50,6 +39,8 @@ export function getDb(): Promise<Db> {
         await mkdir(dataDirectory(), { recursive: true });
         db = (await PGlite.create(dataDirectory("folio"))) as unknown as Db;
       }
+      // A production preview uses a local database already initialized by dev/qa:setup.
+      if (process.env.NODE_ENV === "production") return db;
       await db.exec(
         await readFile(
           path.join(process.cwd(), "db", "001-foundation.sql"),
