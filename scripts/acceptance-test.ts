@@ -195,8 +195,75 @@ async function main() {
     password,
     name: "Fresh Student",
     role: "admin",
+    group_id: "group-a",
+    is_demo: true,
   });
+  const pendingCookie = cookie;
+  for (const path of [
+    "/api/actions",
+    "/api/actions?session=" + session.id,
+    "/api/study-plan",
+    "/api/motivation",
+    "/api/content?lesson=statistics-lesson",
+    "/api/content/accounting-td3",
+    "/api/exercises?progress=statistics",
+  ]) {
+    const r = await fetch(base + path, { headers: { Cookie: cookie } });
+    assert.equal(r.status, 403, path);
+    assert.match((await r.json()).error, /approval/);
+  }
+  await post(
+    "approve-enrolment",
+    { role: "admin", studentEmail: email, group_id: "group-a" },
+    403,
+  );
+  await post(
+    "profile",
+    { name: "Forge", timezone: "UTC", daily_goal: 30, group_id: "group-a" },
+    403,
+  );
+  await post("task", { id: task.id, completed: true }, 403);
+  await post("demo"); // An existing login cannot turn itself into a demo session.
+  for (const path of [
+    "/",
+    "/challenges",
+    "/leaderboard",
+    "/tasks",
+    "/study/statistics",
+    "/resources/accounting-td3",
+    "/prep/statistics",
+    "/mock/test",
+    "/session/test",
+  ]) {
+    const r = await fetch(base + path, { headers: { Cookie: cookie } });
+    assert.match(
+      await r.text(),
+      /Waiting for class approval|NEXT_REDIRECT[^<]*enrolment/,
+      path,
+    );
+  }
+  await post("login", {
+    email: "admin@folio-qa.invalid",
+    password: fixture.password,
+  });
+  await post(
+    "approve-enrolment",
+    { studentEmail: email, group_id: "demo-group" },
+    409,
+  );
+  await post("approve-enrolment", {
+    studentEmail: email,
+    group_id: "qa-group-b",
+  });
+  await post(
+    "approve-enrolment",
+    { studentEmail: email, group_id: "group-a" },
+    409,
+  );
+  cookie = pendingCookie;
   student = await snapshot();
+  assert.equal(student.profile.group_id, "qa-group-b");
+  assert.ok(!student.tasks.some((t) => t.id === task.id));
   assert.equal(student.xp, 0);
   assert.equal(student.streak, 0);
   assert.equal(student.profile.role, "student");

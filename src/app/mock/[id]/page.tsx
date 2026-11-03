@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { currentUser, HttpError } from "@/server/auth";
+import { currentStudyPageUser, HttpError } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { examData, solution } from "@/server/exam-prep";
 import { questionSource } from "@/server/questions";
@@ -14,7 +14,7 @@ export default async function Mock({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ n?: string; message?: string }>;
 }) {
-  const u = await currentUser();
+  const u = await currentStudyPageUser();
   if (!u) redirect("/sign-in");
   if (u.role === "professor") redirect("/professor");
   const { id } = await params,

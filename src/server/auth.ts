@@ -6,6 +6,7 @@ import {
   randomUUID,
 } from "node:crypto";
 import { promisify } from "node:util";
+import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getDb, type Db } from "./db";
 import type { Profile } from "@/lib/types";
@@ -33,11 +34,16 @@ export async function currentUser(): Promise<Profile | null> {
   return (
     (
       await db.query<Profile>(
-        `SELECT ${profileFields} FROM users u JOIN class_groups g ON g.id=u.group_id JOIN auth_sessions a ON a.user_id=u.id WHERE a.token_hash=$1 AND a.expires_at>now()`,
+        `SELECT ${profileFields} FROM users u LEFT JOIN class_groups g ON g.id=u.group_id JOIN auth_sessions a ON a.user_id=u.id WHERE a.token_hash=$1 AND a.expires_at>now()`,
         [digest(token)],
       )
     ).rows[0] || null
   );
+}
+export async function currentStudyPageUser() {
+  const user = await currentUser();
+  if (user && user.group_id === null) redirect("/enrolment");
+  return user;
 }
 export async function createAuthSession(userId: string) {
   const token = randomBytes(32).toString("hex");
@@ -75,6 +81,8 @@ export class HttpError extends Error {
 export async function requireUser(workspace: "study" | "account" = "study") {
   const user = await currentUser();
   if (!user) throw new HttpError(401, "Please sign in to continue.");
+  if (workspace === "study" && user.group_id === null)
+    throw new HttpError(403, "Your class membership is awaiting approval.");
   if (workspace === "study" && user.role === "professor")
     throw new HttpError(403, "Use your assigned teaching workspace.");
   return user;

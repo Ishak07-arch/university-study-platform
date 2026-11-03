@@ -102,18 +102,13 @@ async function main() {
     name: "QA Student",
     password: "local-QA-password-2026",
   });
-  snapshot = await (await get("/api/actions")).json();
-  assert.equal(snapshot.xp, 0);
-  assert.equal(snapshot.active, null);
-  assert.equal(snapshot.streak, 0);
-  assert.equal(snapshot.subjects.length, 5);
+  await get("/api/actions", 403);
+  await get("/enrolment");
   await post("logout");
   await post("login", { email, password: "wrong" }, 401);
   await post("login", { email, password: "local-QA-password-2026" });
-  await get("/progress");
-  await get("/leaderboard");
-  await get("/study/statistics");
-  await get("/resources/accounting-td3");
+  await get("/api/actions", 403);
+  await get("/enrolment");
   await post("logout");
   console.log(
     "HTTP smoke tests passed: auth, protected routes, CSRF, resume, feedback, XP deduplication, roles, task persistence, profile, fresh account, and page routes.",

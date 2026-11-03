@@ -4,7 +4,7 @@
 
 Last updated: 3 November 2026
 
-**Current milestone: Phase 4.1 PASS**
+**Current milestone: Phase 4.1 PASS · class enrolment security fix PASS**
 
 Completed phases:
 
@@ -40,6 +40,7 @@ Current migrations:
 - `006-daily-study.sql`
 - `007-motivation.sql`
 - `008-professor-challenges.sql`
+- `009-pending-enrolment.sql`
 
 All migrations are located in `db/`.
 
@@ -49,13 +50,15 @@ Continue using local PGlite for development.
 
 ## Latest Verification
 
-Phase 4.1:
+Phase 4.1 with enrolment security fix:
 
-- 39 automated tests passed
+- 40 automated tests passed
 - TypeScript checks passed
 - Production build passed
 - Dependency audit: 0 reported vulnerabilities
-- Professor permissions and challenge workflows verified locally
+- Production-mode HTTP acceptance, Professor workflow and smoke checks passed against an isolated PGlite database. Forged assignments were denied and an existing pending session gained only the class approved by an Admin.
+- Pending accounts are signed in without class access. Admin → Class approvals requires independent identity and roster verification.
+- Before public deployment, reconcile pre-migration memberships against the authoritative roster. Historical automatic assignments to group-a are indistinguishable from legitimate assignments in the old data; migration 009 does not revoke existing memberships.
 
 Live PostgreSQL, production deployment and real external AI integrations still require verification.
 

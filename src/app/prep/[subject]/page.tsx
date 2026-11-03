@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { currentUser } from "@/server/auth";
+import { currentStudyPageUser } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { prepHome, solution } from "@/server/exam-prep";
 import { begin, reviewCard } from "../actions";
@@ -13,7 +13,7 @@ export default async function Prep({
   params: Promise<{ subject: string }>;
   searchParams: Promise<{ message?: string }>;
 }) {
-  const u = await currentUser();
+  const u = await currentStudyPageUser();
   if (!u) redirect("/sign-in");
   if (u.role === "professor") redirect("/professor");
   const { subject } = await params,

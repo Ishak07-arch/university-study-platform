@@ -29,7 +29,7 @@ test("teaching assignments isolate class tools, verified work and audited academ
       id: string,
       role: Profile["role"],
       group = "group-a",
-    ): Profile => ({
+    ): Profile & { group_id: string } => ({
       id,
       name: id,
       email: id + "@test.invalid",

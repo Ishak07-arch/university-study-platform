@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import {
   ArrowUpRight,
   BarChart3,
@@ -64,6 +64,7 @@ export function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -73,6 +74,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       className="modal"
       onCancel={(e) => {
         e.preventDefault();
@@ -83,7 +85,7 @@ export function Modal({
       }}
     >
       <div className="modal-heading">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           className="icon-button"
           aria-label="Close dialog"

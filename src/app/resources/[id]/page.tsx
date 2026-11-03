@@ -1,4 +1,6 @@
-import { notFound } from "next/navigation";
+import { currentStudyPageUser } from "@/server/auth";
+import { getDb } from "@/server/db";
+import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/print-button";
 export default async function Page({
   params,
@@ -7,6 +9,21 @@ export default async function Page({
 }) {
   const { id } = await params;
   if (id !== "accounting-td3") notFound();
+  const user = await currentStudyPageUser();
+  if (!user) redirect("/sign-in");
+  if (
+    user.role === "professor" ||
+    (user.role !== "admin" &&
+      !(
+        await (
+          await getDb()
+        ).query(
+          "SELECT 1 FROM tasks WHERE group_id=$1 AND attachment=$2 LIMIT 1",
+          [user.group_id, id],
+        )
+      ).rows.length)
+  )
+    notFound();
   return (
     <main className="worksheet">
       <div className="worksheet-toolbar">

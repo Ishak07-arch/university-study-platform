@@ -17,6 +17,7 @@ import {
   audit,
 } from "@/server/auth";
 import { seedDemo } from "@/server/seed";
+import { approveEnrolment } from "@/server/enrolment";
 import { snapshot, sessionData } from "@/server/data";
 import {
   startSession,
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
         );
       const uid = randomUUID();
       await db.query(
-        `INSERT INTO users(id,email,password_hash,name,group_id) VALUES($1,$2,$3,$4,'group-a')`,
+        `INSERT INTO users(id,email,password_hash,name) VALUES($1,$2,$3,$4)`,
         [uid, d.email, await hashPassword(d.password), d.name],
       );
       await createAuthSession(uid);
@@ -318,6 +319,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
     requireAdmin(user);
+    if (action === "approve-enrolment") {
+      const d = z.object({ studentEmail: email, group_id: id }).parse(body);
+      await approveEnrolment(db, user, d.studentEmail, d.group_id);
+      return NextResponse.json({ ok: true });
+    }
     if (action === "admin-task") {
       const d = z
         .object({

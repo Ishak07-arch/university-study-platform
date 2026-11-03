@@ -13,6 +13,7 @@ export const migrationFiles = [
   "006-daily-study.sql",
   "007-motivation.sql",
   "008-professor-challenges.sql",
+  "009-pending-enrolment.sql",
 ] as const;
 export interface Migration {
   name: string;

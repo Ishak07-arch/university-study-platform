@@ -1,4 +1,4 @@
-import { currentUser } from "@/server/auth";
+import { currentStudyPageUser } from "@/server/auth";
 import { sessionData } from "@/server/data";
 import { redirect, notFound } from "next/navigation";
 import { PracticeSession } from "@/components/practice-session";
@@ -8,7 +8,7 @@ export default async function SessionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await currentUser();
+  const user = await currentStudyPageUser();
   if (!user) redirect("/sign-in");
   if (user.role === "professor") redirect("/professor");
   const { id } = await params;

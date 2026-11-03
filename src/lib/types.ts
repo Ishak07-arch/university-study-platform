@@ -13,7 +13,7 @@ export interface Profile {
   name: string;
   email: string;
   role: Role;
-  group_id: string;
+  group_id: string | null;
   group_name?: string;
   daily_goal: number;
   timezone: string;

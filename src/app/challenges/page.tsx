@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { currentUser } from "@/server/auth";
+import { currentStudyPageUser } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { studentChallenges } from "@/server/teaching-data";
 import { studentAction } from "../professor/actions";
@@ -9,7 +9,7 @@ export default async function Challenges({
 }: {
   searchParams: Promise<{ message?: string }>;
 }) {
-  const u = await currentUser();
+  const u = await currentStudyPageUser();
   if (!u) redirect("/sign-in");
   if (u.role !== "student" || u.is_demo) notFound();
   const rows = await studentChallenges(await getDb(), u);

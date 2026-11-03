@@ -10,6 +10,7 @@ import { QuestionAdmin } from "./question-admin";
 type Named = { id: string; name: string };
 export function AdminDashboard({
   name,
+  pending,
   subjects,
   groups,
   semesters,
@@ -17,6 +18,7 @@ export function AdminDashboard({
   events,
 }: {
   name: string;
+  pending: { email: string; name: string }[];
   subjects: Subject[];
   groups: Named[];
   semesters: Named[];
@@ -51,7 +53,11 @@ export function AdminDashboard({
     setMessage("");
     try {
       await api(action, payload);
-      setMessage("Saved. Students can see this in their workspace now.");
+      setMessage(
+        action === "approve-enrolment"
+          ? "Class membership approved."
+          : "Saved. Students can see this in their workspace now.",
+      );
       form.reset();
       router.refresh();
     } catch (e) {
@@ -92,6 +98,7 @@ export function AdminDashboard({
         <div className="admin-tabs segmented">
           {[
             ["tasks", "Reminders"],
+            ["enrolment", "Class approvals"],
             ["subjects", "Subjects"],
             ["lessons", "Lessons"],
             ["content", "Course materials"],
@@ -115,7 +122,50 @@ export function AdminDashboard({
             {message}
           </div>
         )}
-        {tab === "tasks" ? (
+        {tab === "enrolment" ? (
+          <form
+            className="panel"
+            onSubmit={(e) => submit(e, "approve-enrolment")}
+          >
+            <h2>Approve class membership</h2>
+            <p>
+              Confirm the account holder’s identity and class against your
+              roster. Registration emails are self-reported.
+            </p>
+            <label className="field-label">
+              Pending account email
+              <input
+                type="email"
+                name="studentEmail"
+                list="pending-students"
+                required
+              />
+              <datalist id="pending-students">
+                {pending.map((p) => (
+                  <option key={p.email} value={p.email}>
+                    {p.name}
+                  </option>
+                ))}
+              </datalist>
+            </label>
+            <label className="field-label">
+              Verified class
+              <select name="group_id" defaultValue="" required>
+                <option value="" disabled>
+                  Choose a class
+                </option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="primary" disabled={busy}>
+              Approve membership
+            </button>
+          </form>
+        ) : tab === "tasks" ? (
           <div className="admin-columns">
             <form className="panel" onSubmit={(e) => submit(e, "admin-task")}>
               <h2>Create a reminder</h2>

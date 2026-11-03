@@ -34,7 +34,7 @@ Tasks: `tasks` carries group, subject, type, deadline, importance, attachment, c
 
 Motivation: append-only `xp_events` has a unique `(user_id,event_key)` constraint. `study_days` records dates in the student's timezone. Weekly/monthly leaderboards sum awarded events in the selected period and class group. Demo accounts never join real rankings.
 
-Future-only tables: `topic_mastery` has structured signals and a model version; `achievements` and `user_achievements` support later awards; `leaderboard_periods` supports cohort periods; `professor_challenges` and `academic_rewards` separate official review from XP. Phase 2.2 uses `mistakes` for simple recurrence and correction tracking. No API converts XP into grades. Academic reward status requires a verifier for non-pending records, but approval authorisation is deliberately not implemented/exposed.
+Schema notes: `topic_mastery` has structured signals and a model version; `achievements` and `user_achievements` store earned awards; `leaderboard_periods` supports cohort periods; `professor_challenges` and `academic_rewards` separate official review from XP. Phase 2.2 uses `mistakes` for simple recurrence and correction tracking. No API converts XP into grades. Assigned professors can create class challenges. The author or an admin reviews written work; linked exercises verify against server-recorded attempts. Verification decisions are audited.
 
 ## Learning transaction boundaries
 
@@ -55,7 +55,7 @@ Passwords use Node's scrypt with independent random salts and timing-safe compar
 
 Mutations require a same-origin Origin header. All SQL user input is parameterised. Mutation payload sizes and field lengths are bounded. Authentication and user action rates are limited in the database. Roles are never accepted from registration/profile input. API checks enforce roles and ownership even if a user bypasses the interface. Administrative changes write audit records; XP records are themselves immutable awards.
 
-Local public previews exist for easy review. Disable `ENABLE_DEMO` in production to require authentication for the student pages. Real accounts remain independent of preview history. The foundation assumes one institution and a default class for registration; invitation-based membership and university administrators belong to later rollout work.
+Local public previews exist for easy review. Disable `ENABLE_DEMO` in production to require authentication for the student pages. Real accounts remain independent of preview history. New student accounts have no class until an administrator verifies roster membership and approves the assignment.
 
 ## UI foundations
 
@@ -69,4 +69,4 @@ Dialogs use native focus containment, keyboard dismissal, and focus restoration.
 
 The Phase 1 learning loop is preserved. Phase 2.1 adds resource upload/publication and a contextual Tutor using PostgreSQL full-text retrieval and a server-only Responses adapter. Phase 2.2 adds typed questions, source-checked generation blueprints, deterministic numeric solvers, exact text checking, and mistake-priority rules. `questions.ts` centralises visibility/checking, `exercise-generation.ts` handles bounded generation/cache, and `exercise-sessions.ts` connects these to the existing learning transactions. Source visibility is rechecked after generation and at answer/read boundaries. Manual revisions retain reward identity and historical attempts; generated families share reward keys. No advanced adaptive features are enabled. See README for supported templates, reward limits and QA commands.
 
-Professor authorisation, verification/audit policy for academic rewards, ingestion/storage validation, full enrolment, and multi-tenant administrator scoping must be implemented before those future workflows are enabled. Hosted database and SMTP integration require deployment credentials and environment verification.
+Teaching assignments, academic reward auditing, upload validation and admin-controlled enrolment are implemented. Multi-institution administrator scoping remains future work. Hosted database and SMTP integration require deployment credentials and environment verification.

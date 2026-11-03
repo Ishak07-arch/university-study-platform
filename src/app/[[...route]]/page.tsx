@@ -1,5 +1,5 @@
 import { snapshot } from "@/server/data";
-import { currentUser } from "@/server/auth";
+import { currentStudyPageUser } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export default async function Page({
     (route.length === 2 && section !== "study")
   )
     notFound();
-  const user = await currentUser();
+  const user = await currentStudyPageUser();
   if (user?.role === "professor") redirect("/professor");
   if (
     !user &&

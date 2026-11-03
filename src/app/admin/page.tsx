@@ -19,6 +19,11 @@ export default async function AdminPage() {
       </main>
     );
   const db = await getDb();
+  const pending = (
+    await db.query<{ email: string; name: string }>(
+      "SELECT email,name FROM users WHERE group_id IS NULL AND role='student' AND NOT is_demo ORDER BY created_at LIMIT 100",
+    )
+  ).rows;
   const subjects = (
     await db.query<Subject>("SELECT * FROM subjects ORDER BY name")
   ).rows;
@@ -56,6 +61,7 @@ export default async function AdminPage() {
   ).rows;
   return (
     <AdminDashboard
+      pending={pending}
       name={user.name}
       subjects={subjects}
       groups={groups}

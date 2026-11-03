@@ -87,7 +87,7 @@ The runner takes a transaction advisory lock, applies all pending files in numer
 
 **SQL audit:** `001` orders parent tables before foreign keys; `002` extends resources before creating chunks; `003` extends existing questions/sessions/attempts. All additions are guarded. Existing keys/checks, partial unique fingerprint index and English full-text GIN index use built-in PostgreSQL features; no extensions or superuser-only statements are required. `questions.source_chunk_id` intentionally lacks a foreign key so re-extraction can invalidate sources without deleting question history. No SQL edits were required. DDL and ordinary indexes take locks; migrations use a 10-second lock timeout and 120-second statement timeout. Run in a quiet deployment window; plan large future indexes separately.
 
-Schema-only migration intentionally leaves an empty database. Existing onboarding/admin provisioning requires `group-a`; the preview also assumes `demo-group` and curriculum records. Provision institutional data with the identifiers the current app expects before enabling traffic, or explicitly opt into sample seeding for staging. Seeding requires the confirmation flag and matching migration ledger, preserves the existing seed's demo-group migration, and creates no admin credentials. It is not an institution-data importer. Authentication is unchanged.
+Schema-only migration intentionally leaves an empty database. Staff provisioning requires `group-a`; the preview also assumes `demo-group` and curriculum records. Provision institutional data with the identifiers the current app expects before enabling traffic, or explicitly opt into sample seeding for staging. Seeding requires the confirmation flag and matching migration ledger, preserves the existing seed's demo-group migration, and creates no admin credentials. It is not an institution-data importer. Authentication is unchanged.
 
 ### Supabase connection choice
 
@@ -117,7 +117,7 @@ Weekly class standings reset on Monday at 00:00 UTC. Bronze, Silver, Gold, Diamo
 
 Homework completion is self-reported and earns 3 XP once per assigned task. A completed practice session must contain a newly rewarded answer to earn a completion bonus. A later first-try correction of a mock mistake can earn 2 extra XP once per subject. Resolving a recurring mistake with independent success on three different families can earn 3 extra XP once per lesson topic. Daily plans link to these underlying activities. The two weekly challenges each grant 10 XP once, for five new first-try solves or new first-try solves on three different UTC days. Completed practice and fully answered mocks also count toward local study streaks when replay earns zero XP.
 
-The local curriculum, classroom, and classmates are illustrative demo material. Real teaching materials and an institution's membership/enrolment process should be configured before rollout. New registrations currently join the seeded first-semester group to keep Phase 1 onboarding short.
+The local curriculum, classroom, and classmates are illustrative demo material. Real teaching materials and an institution's membership/enrolment process should be configured before rollout. New registrations wait for an administrator to verify their identity and class against the roster in Admin → Class approvals. Migration 009 preserves existing assignments. Before public rollout, reconcile legacy group-a accounts against the roster: the former registration flow did not record how membership was obtained.
 
 ## Phase 2.1: course materials and Tutor
 

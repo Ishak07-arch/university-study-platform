@@ -28,6 +28,7 @@ test("ordered hosted migrations run without seeding and are repeatable with a ch
       "006-daily-study.sql",
       "007-motivation.sql",
       "008-professor-challenges.sql",
+      "009-pending-enrolment.sql",
     ]);
     await assertMigrated(db, migrations);
     assert.equal(
