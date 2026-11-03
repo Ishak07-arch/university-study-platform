@@ -4,7 +4,10 @@ import type { ContentCatalog } from "@/lib/content-types";
 import type { Question } from "@/lib/types";
 import type { QuestionType } from "@/lib/exercise-types";
 import { exerciseRequest } from "./exercise-entry";
-type AdminQuestion = Question & { resource_id: string | null };
+type AdminQuestion = Question & {
+  resource_id: string | null;
+  exam_eligible: boolean;
+};
 export function QuestionAdmin({
   subjects,
 }: {
@@ -143,6 +146,10 @@ export function QuestionAdmin({
           />
           <section className="panel">
             <h2>Saved questions</h2>
+            <p className="helper">
+              Each question supplies a revision card. Choose which questions can
+              appear in mock exams.
+            </p>
             {questions.length === 0 && (
               <p className="helper">
                 No questions yet. Create one here, or generate from published
@@ -151,6 +158,25 @@ export function QuestionAdmin({
             )}
             {questions.map((q) => (
               <article className="managed-question" key={q.id}>
+                {!q.disabled && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      disabled={busy}
+                      checked={q.exam_eligible}
+                      onChange={() =>
+                        run(() =>
+                          exerciseRequest({
+                            action: "eligibility",
+                            id: q.id,
+                            eligible: !q.exam_eligible,
+                          }),
+                        )
+                      }
+                    />{" "}
+                    Include in mock exams
+                  </label>
+                )}
                 <span className="tag">
                   {q.origin} · {q.question_type} · Difficulty {q.difficulty}
                   {q.disabled ? " · Withdrawn" : ""}

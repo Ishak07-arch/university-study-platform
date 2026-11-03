@@ -158,6 +158,10 @@ export function AppShell({
           return;
         }
       }
+      if (mode === "exam") {
+        router.push("/prep/" + encodeURIComponent(subject));
+        return;
+      }
       const r = await api<{ id: string }>("start", {
         mode,
         subject,
@@ -422,8 +426,8 @@ export function AppShell({
               <div>
                 <strong>Build your foundation</strong>
                 <p>
-                  Key concepts and focused practice are ready. Timed mock exams
-                  will come in a later release.
+                  Review flashcards, revisit weak topics or take a timed mock
+                  exam.
                 </p>
               </div>
             </div>
@@ -437,7 +441,9 @@ export function AppShell({
               ? "Getting ready…"
               : picker.mode === "review"
                 ? "Start quick review"
-                : "Start practising"}
+                : picker.mode === "exam"
+                  ? "Open exam prep"
+                  : "Start practising"}
             <ArrowRight size={18} />
           </button>
         </Modal>

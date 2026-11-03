@@ -35,9 +35,16 @@ export async function POST(req: NextRequest) {
     const user = await requireUser();
     const db = await getDb();
     const body = JSON.parse((await limitedBody(req, 15000)).toString("utf8"));
-    if (body.action === "save" || body.action === "disable") {
+    if (["save", "disable", "eligibility"].includes(body.action)) {
       requireAdmin(user);
       await rateLimit("question-admin:" + user.id, 60);
+      if (body.action === "eligibility") {
+        await db.query("UPDATE questions SET exam_eligible=$2 WHERE id=$1", [
+          id.parse(body.id),
+          z.boolean().parse(body.eligible),
+        ]);
+        return json({ ok: true });
+      }
       if (body.action === "disable") {
         await disableQuestion(db, user, id.parse(body.id));
         return json({ ok: true });
