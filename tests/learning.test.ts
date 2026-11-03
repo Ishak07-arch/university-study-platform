@@ -1,5 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { readMigrations } from "../src/server/migrations";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { seed } from "../src/server/seed";
@@ -31,7 +32,7 @@ before(async () => {
   await db.exec(await readFile("db/001-foundation.sql", "utf8"));
   await seed(db);
   await db.exec(await readFile("db/002-course-content.sql", "utf8"));
-  await db.exec(await readFile("db/003-exercises.sql", "utf8"));
+  for (const m of (await readMigrations()).slice(2)) await db.exec(m.sql);
   await db.query(
     `INSERT INTO users(id,email,name,group_id) VALUES($1,$2,$3,$4)`,
     [user.id, user.email, user.name, user.group_id],

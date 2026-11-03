@@ -23,8 +23,8 @@ import {
   answerQuestion,
   advanceSession,
 } from "@/server/learning";
-import type { Profile, Task } from "@/lib/types";
-import { createReminder } from "@/server/tasks";
+import type { Profile } from "@/lib/types";
+import { completeReminder, createReminder } from "@/server/tasks";
 import { dataDirectory } from "@/server/config";
 import { availableQuestion } from "@/server/questions";
 export const runtime = "nodejs";
@@ -310,23 +310,7 @@ export async function POST(req: NextRequest) {
     }
     if (action === "task") {
       const d = z.object({ id, completed: z.boolean() }).parse(body);
-      const task = (
-        await db.query<Task>(
-          "SELECT * FROM tasks WHERE id=$1 AND group_id=$2",
-          [d.id, user.group_id],
-        )
-      ).rows[0];
-      if (!task) throw new HttpError(404, "Task not found.");
-      if (d.completed)
-        await db.query(
-          "INSERT INTO task_completions(user_id,task_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
-          [user.id, d.id],
-        );
-      else
-        await db.query(
-          "DELETE FROM task_completions WHERE user_id=$1 AND task_id=$2",
-          [user.id, d.id],
-        );
+      await completeReminder(db, user, d.id, d.completed);
       return NextResponse.json({ ok: true });
     }
     requireAdmin(user);

@@ -29,10 +29,11 @@ export async function award(
   key: string,
   amount: number,
   reason: string,
+  sessionId?: string,
 ) {
   const { rows } = await tx.query<{ id: string }>(
-    "INSERT INTO xp_events(id,user_id,event_key,reason,amount) VALUES($1,$2,$3,$4,$5) ON CONFLICT(user_id,event_key) DO NOTHING RETURNING id",
-    [randomUUID(), user.id, key, reason, amount],
+    "INSERT INTO xp_events(id,user_id,event_key,reason,amount,reward_session) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(user_id,event_key) DO NOTHING RETURNING id",
+    [randomUUID(), user.id, key, reason, amount, sessionId ?? null],
   );
   if (rows.length) {
     await tx.query(
@@ -209,15 +210,35 @@ export async function answerQuestion(
         [user.id, q.reward_key || questionId],
       )
     ).rows[0].n;
-    const xp = correct
+    let xp = correct
       ? await award(
           tx,
           user,
           "question:" + (q.reward_key || questionId),
           previous > 0 ? 7 : 5,
           previous > 0 ? "Corrected a mistake" : "Correct on first attempt",
+          sessionId,
         )
       : 0;
+    // Reading an explanation is free. Only a new, unaided practice solve can
+    // verify recovery from an answered mistake in a previously submitted mock.
+    if (
+      xp &&
+      attempts.length === 0 &&
+      (
+        await tx.query(
+          "SELECT 1 FROM mock_items i JOIN mock_exams e ON e.id=i.exam_id WHERE e.user_id=$1 AND e.submitted_at IS NOT NULL AND e.submitted_at<(SELECT created_at FROM study_sessions WHERE id=$3) AND i.question_id=$2 AND i.correct=false AND i.response IS NOT NULL LIMIT 1",
+          [user.id, questionId, sessionId],
+        )
+      ).rows.length
+    )
+      xp += await award(
+        tx,
+        user,
+        "exam-review:" + s.subject_id,
+        2,
+        "Corrected a mock exam mistake",
+      );
     return {
       correct,
       xp,
@@ -261,7 +282,15 @@ export async function advanceSession(db: Db, user: Profile, id: string) {
       [id, complete, available ? 0 : 1],
     );
     const xp =
-      complete && available && !s.skipped
+      complete &&
+      available &&
+      !s.skipped &&
+      (
+        await tx.query(
+          "SELECT 1 FROM xp_events WHERE reward_session=$1 AND user_id=$2 LIMIT 1",
+          [id, user.id],
+        )
+      ).rows.length > 0
         ? await award(
             tx,
             user,

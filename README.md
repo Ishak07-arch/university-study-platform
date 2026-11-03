@@ -113,9 +113,9 @@ For a production preview with PGlite, initialize the database first through deve
 
 Included: Home prioritisation, persistent resume, five seeded subjects, lessons, quick reviews, one-question practice, exam-prep foundation, reminders and completion, printable accounting worksheet, practice coverage, audited XP, streaks, group leaderboard, profiles, light/dark mode, and admin foundations.
 
-Intentionally deferred: flashcards, timed mock exams, adaptive mastery, advanced mistake analysis, leagues, earned achievements, professor workflows, academic reward approval, push notifications, and complex curriculum management. Schema extension points exist for these features; their workflows are not presented as working features.
+Weekly class standings reset on Monday at 00:00 UTC. Bronze, Silver, Gold, Diamond and Elite begin at 0, 20, 50, 100 and 180 weekly XP. Most Improved ranks newly demonstrated topics using correct first practice attempts on distinct question families. Only the learner sees their achievement list and challenge progress.
 
-XP is awarded for verified answers and unique completed sessions. Clicking a homework checkbox does **not** grant XP: validating homework submission is a later workflow. XP has no academic grade value. The progress display measures practice coverage, not mastery or exam readiness.
+Homework completion is self-reported and earns 3 XP once per assigned task. A completed practice session must contain a newly rewarded answer to earn a completion bonus. A later first-try correction of a mock mistake can earn 2 extra XP once per subject. Resolving a recurring mistake with independent success on three different families can earn 3 extra XP once per lesson topic. Daily plans link to these underlying activities. The two weekly challenges each grant 10 XP once, for five new first-try solves or new first-try solves on three different UTC days. Completed practice and fully answered mocks also count toward local study streaks when replay earns zero XP.
 
 The local curriculum, classroom, and classmates are illustrative demo material. Real teaching materials and an institution's membership/enrolment process should be configured before rollout. New registrations currently join the seeded first-semester group to keep Phase 1 onboarding short.
 

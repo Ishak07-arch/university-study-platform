@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Db } from "./db";
 import type { Profile, TaskType } from "@/lib/types";
 import { requireAdmin, HttpError, audit } from "./auth";
+import { award } from "./learning";
 export type ReminderInput = {
   subject_id: string;
   group_id: string;
@@ -49,5 +50,41 @@ export async function createReminder(
     );
     await audit(tx, actor.id, "task.created", id, input);
     return id;
+  });
+}
+
+export async function completeReminder(
+  db: Db,
+  user: Profile,
+  id: string,
+  complete: boolean,
+) {
+  return db.transaction(async (tx) => {
+    const task = (
+      await tx.query<{ type: TaskType }>(
+        "SELECT type FROM tasks WHERE id=$1 AND group_id=$2",
+        [id, user.group_id],
+      )
+    ).rows[0];
+    if (!task) throw new HttpError(404, "Task not found.");
+    if (!complete) {
+      await tx.query(
+        "DELETE FROM task_completions WHERE user_id=$1 AND task_id=$2",
+        [user.id, id],
+      );
+      return;
+    }
+    const inserted = await tx.query(
+      "INSERT INTO task_completions(user_id,task_id) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING task_id",
+      [user.id, id],
+    );
+    if (
+      inserted.rows.length &&
+      task.type === "HOMEWORK" &&
+      user.role === "student"
+    ) {
+      await award(tx, user, "homework:" + id, 3, "Completed class homework");
+      await tx.query("SELECT folio_badge($1,'homework')", [user.id]);
+    }
   });
 }

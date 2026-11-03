@@ -1,3 +1,4 @@
+import { periodLeaders } from "./motivation";
 import { getDb } from "./db";
 import { currentUser } from "./auth";
 import { localDay, streakFromDays } from "./learning";
@@ -71,7 +72,7 @@ export async function snapshot(supplied?: Profile | null): Promise<Snapshot> {
       previous: number;
       today: number;
     }>(
-      `SELECT coalesce(sum(amount),0)::int total,coalesce(sum(amount) FILTER (WHERE created_at>=date_trunc('week',now() AT TIME ZONE $2) AT TIME ZONE $2),0)::int week,coalesce(sum(amount) FILTER (WHERE created_at>=((date_trunc('week',now() AT TIME ZONE $2)-interval '7 days') AT TIME ZONE $2) AND created_at<(date_trunc('week',now() AT TIME ZONE $2) AT TIME ZONE $2)),0)::int previous,coalesce(sum(amount) FILTER (WHERE (created_at AT TIME ZONE $2)::date=$3::date),0)::int today FROM xp_events WHERE user_id=$1`,
+      `SELECT coalesce(sum(amount),0)::int total,coalesce(sum(amount) FILTER (WHERE created_at>=date_trunc('week',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'),0)::int week,coalesce(sum(amount) FILTER (WHERE created_at>=((date_trunc('week',now() AT TIME ZONE 'UTC')-interval '7 days') AT TIME ZONE 'UTC') AND created_at<(date_trunc('week',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')),0)::int previous,coalesce(sum(amount) FILTER (WHERE (created_at AT TIME ZONE $2)::date=$3::date),0)::int today FROM xp_events WHERE user_id=$1`,
       [profile.id, profile.timezone, localDay(profile.timezone)],
     )
   ).rows[0];
@@ -88,16 +89,8 @@ export async function snapshot(supplied?: Profile | null): Promise<Snapshot> {
         [profile.id],
       )
     ).rows[0] || null;
-  async function leaders(period: "week" | "month") {
-    return (
-      await db.query<Leader>(
-        `SELECT u.id,u.name,coalesce(sum(x.amount),0)::int xp,0 streak,(u.id=$1) is_you FROM users u LEFT JOIN xp_events x ON x.user_id=u.id AND x.created_at>=date_trunc('${period}',now() AT TIME ZONE $3) AT TIME ZONE $3 WHERE u.group_id=$2 AND u.is_demo=false AND u.role='student' GROUP BY u.id ORDER BY xp DESC,u.name LIMIT 20`,
-        [profile.id, profile.group_id, profile.timezone],
-      )
-    ).rows;
-  }
-  let weekLeaders = await leaders("week"),
-    monthlyLeaders = await leaders("month");
+  let weekLeaders: Leader[] = await periodLeaders(db, profile, "week"),
+    monthlyLeaders: Leader[] = await periodLeaders(db, profile, "month");
   if (profile.is_demo) {
     weekLeaders = [
       {

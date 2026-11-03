@@ -78,6 +78,12 @@ export function getDb(): Promise<Db> {
           "utf8",
         ),
       );
+      await db.exec(
+        await readFile(
+          path.join(process.cwd(), "db", "007-motivation.sql"),
+          "utf8",
+        ),
+      );
       return db;
     })();
   return globalDb.folioDb;

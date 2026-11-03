@@ -91,6 +91,7 @@ export interface Question extends PublicQuestion {
   reward_key?: string | null;
 }
 export interface Leader {
+  rank?: number;
   id: string;
   name: string;
   xp: number;

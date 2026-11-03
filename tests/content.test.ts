@@ -1,5 +1,6 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
+import { readMigrations } from "../src/server/migrations";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import type { Db } from "../src/server/db";
@@ -44,7 +45,7 @@ before(async () => {
   db = pg as unknown as Db;
   await db.exec(await readFile("db/001-foundation.sql", "utf8"));
   await seed(db);
-  await db.exec(await readFile("db/003-exercises.sql", "utf8"));
+  for (const m of (await readMigrations()).slice(2)) await db.exec(m.sql);
   await db.exec(await readFile("db/002-course-content.sql", "utf8"));
   await db.exec(await readFile("db/002-course-content.sql", "utf8"));
   for (const u of [student, admin])

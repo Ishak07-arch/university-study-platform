@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { weeklyLeague } from "@/lib/leagues";
+import type { motivation } from "@/server/motivation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -12,7 +14,6 @@ import {
   Flame,
   GraduationCap,
   LogOut,
-  Medal,
   Plus,
   Search,
   Sparkles,
@@ -434,8 +435,9 @@ export function ProgressPage() {
               <strong>+8 XP</strong>
             </p>
             <small>
-              Each question and unique session earns points once. XP celebrates
-              learning and is separate from academic grades.
+              Question families earn points once. Session bonuses require a
+              newly rewarded answer. XP celebrates learning and is separate from
+              academic grades.
             </small>
           </div>
         </aside>
@@ -445,8 +447,40 @@ export function ProgressPage() {
 }
 export function LeaderboardPage() {
   const { data } = useStudy();
-  const [period, setPeriod] = useState<"week" | "month">("week");
-  const leaders = period === "week" ? data.leaders : data.monthlyLeaders;
+  const [period, setPeriod] = useState<"week" | "month" | "improved">("week");
+  const [extra, setExtra] = useState<Awaited<
+      ReturnType<typeof motivation>
+    > | null>(null),
+    [error, setError] = useState("");
+  useEffect(() => {
+    setExtra(null);
+    setError("");
+    if (!data.authenticated) return;
+    const c = new AbortController();
+    fetch("/api/motivation", { signal: c.signal, cache: "no-store" })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error);
+        if (!c.signal.aborted) setExtra(d);
+      })
+      .catch((e) => {
+        if (!c.signal.aborted) setError(e.message);
+      });
+    return () => c.abort();
+  }, [data.authenticated, data.profile.id, data.xp]);
+  const leaders =
+    period === "week"
+      ? data.leaders
+      : period === "month"
+        ? data.monthlyLeaders
+        : (extra?.improved ?? []).map((l, i) => ({
+            ...l,
+            id: String(i),
+            xp: 0,
+            streak: 0,
+          }));
+  const own = data.leaders.find((l) => l.is_you),
+    rank = own?.rank ?? (own ? data.leaders.indexOf(own) + 1 : null);
   return (
     <>
       <PageTitle
@@ -470,6 +504,14 @@ export function LeaderboardPage() {
               >
                 This month
               </button>
+              {!data.profile.is_demo && (
+                <button
+                  className={period === "improved" ? "selected" : ""}
+                  onClick={() => setPeriod("improved")}
+                >
+                  Most improved
+                </button>
+              )}
             </div>
             <span className="muted">
               <GraduationCap size={17} />
@@ -481,16 +523,22 @@ export function LeaderboardPage() {
               Sample classmates · Your demo points update as you study.
             </p>
           )}
+          {period === "improved" && (
+            <p className="helper">
+              Newly demonstrated topics this week. Each topic needs two
+              different question families solved on the first try. Eligibility
+              requires three earlier first-try solves and four new ones this
+              week. Up to five new topics count.
+            </p>
+          )}
           <div className="leaderboard-labels">
             <span>RANK</span>
             <span>CLASSMATE</span>
-            <span>LEARNING XP</span>
+            <span>{period === "improved" ? "" : "LEARNING XP"}</span>
           </div>
           {leaders.map((l, i) => (
             <div className={`leader-row ${l.is_you ? "you" : ""}`} key={l.id}>
-              <span className={`rank rank-${i + 1}`}>
-                {i < 3 ? <Medal size={23} /> : String(i + 1).padStart(2, "0")}
-              </span>
+              <span className={`rank rank-${i + 1}`}>{l.rank ?? i + 1}</span>
               <div>
                 <span className={`avatar leader-avatar tone-${i % 4}`}>
                   {l.name
@@ -501,16 +549,31 @@ export function LeaderboardPage() {
                 </span>
                 <strong>
                   {l.name}
+                  {period === "week" && (
+                    <small className="helper"> · {weeklyLeague(l.xp)}</small>
+                  )}
                   {l.is_you && <span className="you-label">You</span>}
                 </strong>
               </div>
               <strong>
-                {l.xp.toLocaleString()}
-                <small>XP</small>
+                {period !== "improved" && (
+                  <>
+                    {l.xp.toLocaleString()}
+                    <small>XP</small>
+                  </>
+                )}
               </strong>
             </div>
           ))}
-          {!leaders.length && (
+          {period === "improved" && !leaders.length && (
+            <p>
+              {error ||
+                (!extra
+                  ? "Loading rankings…"
+                  : "No classmates qualify yet this week.")}
+            </p>
+          )}
+          {period !== "improved" && !leaders.length && (
             <div className="empty-state">
               <Trophy size={32} />
               <h3>A fresh start for your group.</h3>
@@ -537,7 +600,18 @@ export function LeaderboardPage() {
             <h2>
               {data.weeklyXp.toLocaleString()} <span>XP</span>
             </h2>
-            <p>earned this week</p>
+            <p>
+              earned this week · {weeklyLeague(data.weeklyXp)} league
+              {rank !== null && ` · Rank ${rank}`}
+            </p>
+            <details>
+              <summary>Weekly leagues</summary>
+              <p>
+                Bronze · 0 XP, Silver · 20, Gold · 50, Diamond · 100, Elite ·
+                180. Each week starts on Monday (UTC). Last week:{" "}
+                {weeklyLeague(data.previousXp)}.
+              </p>
+            </details>
             <div className="score-divider" />
             <strong>
               {data.weeklyXp >= data.previousXp ? "+" : ""}
@@ -549,11 +623,26 @@ export function LeaderboardPage() {
               <ArrowRight size={16} />
             </Link>
           </div>
-          <div className="leaderboard-note">
-            <h3>The real win?</h3>
-            <p>Understanding something today that felt difficult yesterday.</p>
-            <p>You don’t need to be first to be making progress.</p>
-          </div>
+          {extra && (
+            <section className="leaderboard-note">
+              <h3>Your weekly challenges</h3>
+              <p>
+                First-try solves on new questions ·{" "}
+                {Math.min(5, extra.progress.solved)}/5
+              </p>
+              <p>
+                Days with a new first-try solve ·{" "}
+                {Math.min(3, extra.progress.days)}/3
+              </p>
+              <small>10 XP per completed challenge.</small>
+              <h3>Your achievements</h3>
+              <p>
+                {extra.badges.map((b) => b.name).join(" · ") ||
+                  "Complete a study session to earn your first achievement."}
+              </p>
+            </section>
+          )}
+          {error && <p role="alert">{error}</p>}
         </aside>
       </div>
     </>
