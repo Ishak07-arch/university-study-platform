@@ -19,6 +19,7 @@ export default async function Page({
   )
     notFound();
   const user = await currentUser();
+  if (user?.role === "professor") redirect("/professor");
   if (
     !user &&
     (section === "profile" ||

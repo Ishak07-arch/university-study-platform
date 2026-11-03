@@ -678,6 +678,11 @@ export function ProfilePage() {
         title="Make yourself at home."
         description="A few simple settings for the way you like to study."
       />
+      {["admin", "professor"].includes(data.profile.role) && (
+        <Link className="secondary" href="/professor">
+          Teaching workspace
+        </Link>
+      )}
       <div className="profile-layout">
         <form className="panel profile-form" onSubmit={save}>
           <div className="profile-identity">
@@ -820,6 +825,13 @@ export function TasksPage() {
         title="You’ve got things covered."
         description="Your homework, class prep, and the little things to bring along."
       />
+      {data.authenticated &&
+        data.profile.role === "student" &&
+        !data.profile.is_demo && (
+          <Link className="secondary" href="/challenges">
+            Professor challenges
+          </Link>
+        )}
       <div className="tasks-layout">
         <section className="panel">
           <div className="tasks-toolbar">

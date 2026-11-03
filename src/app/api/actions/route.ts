@@ -118,7 +118,11 @@ export async function POST(req: NextRequest) {
           "Email or password is incorrect. Please try again.",
         );
       await createAuthSession(user.id);
-      return NextResponse.json({ ok: true, admin: user.role === "admin" });
+      return NextResponse.json({
+        ok: true,
+        admin: user.role === "admin",
+        professor: user.role === "professor",
+      });
     }
     if (action === "demo") {
       if (
@@ -232,7 +236,7 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({ ok: true });
     }
-    const user = await requireUser();
+    const user = await requireUser(action === "logout" ? "account" : "study");
     await rateLimit("user:" + user.id, 500);
     if (action === "logout") {
       await signOut();

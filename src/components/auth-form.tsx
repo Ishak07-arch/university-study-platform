@@ -25,7 +25,7 @@ export function AuthForm({
     setError("");
     setBusy(true);
     try {
-      const res = await api<{ admin?: boolean }>(mode, {
+      const res = await api<{ admin?: boolean; professor?: boolean }>(mode, {
         name,
         email,
         password,
@@ -40,7 +40,7 @@ export function AuthForm({
           "Your password has been updated. Sign in with your new password.",
         );
       else {
-        router.push(res.admin ? "/admin" : "/");
+        router.push(res.admin ? "/admin" : res.professor ? "/professor" : "/");
         router.refresh();
       }
     } catch (e) {

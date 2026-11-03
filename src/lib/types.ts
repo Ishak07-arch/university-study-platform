@@ -65,6 +65,7 @@ export interface StudySession {
   exercise_mode?: boolean;
   skipped?: number;
   practice_notice?: string | null;
+  challenge_id?: string | null;
 }
 export interface PublicQuestion {
   id: string;

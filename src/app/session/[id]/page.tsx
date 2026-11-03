@@ -10,6 +10,7 @@ export default async function SessionPage({
 }) {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
+  if (user.role === "professor") redirect("/professor");
   const { id } = await params;
   const data = await sessionData(user, id);
   if (!data) notFound();

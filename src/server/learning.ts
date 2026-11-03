@@ -83,7 +83,7 @@ export async function startSession(
     }
     await tx.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user.id]);
     const active = await tx.query<StudySession>(
-      "SELECT * FROM study_sessions WHERE user_id=$1 AND subject_id=$2 AND mode=$3 AND completed_at IS NULL AND lesson_id IS NOT DISTINCT FROM $4::text AND ($5::text IS NULL OR question_ids->>0=$5) ORDER BY updated_at DESC LIMIT 1",
+      "SELECT * FROM study_sessions WHERE user_id=$1 AND subject_id=$2 AND mode=$3 AND challenge_id IS NULL AND completed_at IS NULL AND lesson_id IS NOT DISTINCT FROM $4::text AND ($5::text IS NULL OR question_ids->>0=$5) ORDER BY updated_at DESC LIMIT 1",
       [user.id, subject, mode, lessonId || null, preferredId || null],
     );
     if (active.rows.length) return active.rows[0].id;
@@ -239,6 +239,10 @@ export async function answerQuestion(
         2,
         "Corrected a mock exam mistake",
       );
+    if (correct && s.challenge_id) {
+      const { verifyExercise } = await import("./challenges");
+      xp += await verifyExercise(tx, user, s.challenge_id, sessionId);
+    }
     return {
       correct,
       xp,

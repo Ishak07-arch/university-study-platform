@@ -71,9 +71,12 @@ export class HttpError extends Error {
     super(message);
   }
 }
-export async function requireUser() {
+// Existing study endpoints use the learning workspace. Teaching accounts have explicit assignments instead.
+export async function requireUser(workspace: "study" | "account" = "study") {
   const user = await currentUser();
   if (!user) throw new HttpError(401, "Please sign in to continue.");
+  if (workspace === "study" && user.role === "professor")
+    throw new HttpError(403, "Use your assigned teaching workspace.");
   return user;
 }
 export function requireAdmin(user: Profile) {
@@ -94,7 +97,7 @@ export async function rateLimit(key: string, max = 20) {
 }
 export async function audit(
   tx: Db,
-  actor: string,
+  actor: string | null,
   action: string,
   entity: string,
   detail: unknown = {},

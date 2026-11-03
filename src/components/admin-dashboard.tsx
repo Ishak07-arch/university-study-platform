@@ -79,6 +79,9 @@ export function AdminDashboard({
         </Link>
       </header>
       <main className="admin-main">
+        <Link className="secondary" href="/professor">
+          Teaching assignments and challenges
+        </Link>
         <div className="page-heading">
           <div>
             <span className="eyebrow">A LITTLE SUPPORT GOES A LONG WAY</span>

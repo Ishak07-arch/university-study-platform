@@ -15,6 +15,13 @@ async function main() {
   const password = "QA-only-" + randomBytes(18).toString("base64url");
   const accounts = [
     {
+      id: "qa-professor",
+      email: "professor@folio-qa.invalid",
+      name: "QA Professor",
+      role: "professor",
+      group: "group-a",
+    },
+    {
       id: "qa-admin",
       email: "admin@folio-qa.invalid",
       name: "QA Administrator",

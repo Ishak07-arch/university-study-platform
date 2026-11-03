@@ -16,6 +16,7 @@ export default async function Mock({
 }) {
   const u = await currentUser();
   if (!u) redirect("/sign-in");
+  if (u.role === "professor") redirect("/professor");
   const { id } = await params,
     db = await getDb(),
     { exam, items } = await examData(db, u, id).catch((e) => {
@@ -71,7 +72,14 @@ export default async function Mock({
                         : q.response}
                   </p>
                   <strong>Correct answer · {solution(q)}</strong>
-                  <p>{q.explanation}</p>{q.correct===false && q.response!==null && q.occurrences>1 && <p>You have missed this question {q.occurrences} times.</p>}
+                  <p>{q.explanation}</p>
+                  {q.correct === false &&
+                    q.response !== null &&
+                    q.occurrences > 1 && (
+                      <p>
+                        You have missed this question {q.occurrences} times.
+                      </p>
+                    )}
                   {source && (
                     <Link href={"/api/content/" + source.resourceId}>
                       {source.label}

@@ -15,6 +15,7 @@ export default async function Prep({
 }) {
   const u = await currentUser();
   if (!u) redirect("/sign-in");
+  if (u.role === "professor") redirect("/professor");
   const { subject } = await params,
     db = await getDb(),
     { topics, card, due, active } = await prepHome(db, u, subject);
