@@ -10,6 +10,8 @@ interface Candidate {
   topic: string;
   difficulty: number;
   recent_good: boolean;
+  due?: boolean;
+  reviewed_today?: boolean;
 }
 interface Evidence {
   question_id: string;
@@ -173,6 +175,10 @@ export function assess(
     lesson: questions[0].lesson_id,
     score: score === null ? null : Math.min(100, score),
     group,
+    poolSize: questions.length,
+    evidence: weight,
+    due: questions.filter((q) => q.due).length,
+    reviewed: questions.filter((q) => q.reviewed_today).length,
     memory,
     reason,
     rank,
@@ -184,11 +190,19 @@ export function assess(
 
 export async function subjectProgress(db: Db, u: Profile, subject: string) {
   await assertSubject(db, u, subject);
+  return progressForSubjects(db, u, [subject]);
+}
+// The Home planner uses one bounded data fetch across the student’s subjects.
+export async function progressForSubjects(
+  db: Db,
+  u: Profile,
+  subjects: string[],
+) {
   const qs = (
-    await db.query<Candidate>(
-      `SELECT q.id,q.lesson_id,q.topic,q.difficulty, EXISTS(SELECT 1 FROM card_reviews r WHERE r.user_id=$4 AND r.question_id=q.id AND r.rating='Good' AND due_at>now()) recent_good
- FROM questions q JOIN lessons l ON l.id=q.lesson_id JOIN chapters c ON c.id=l.chapter_id JOIN class_groups g ON g.id=$2 JOIN subjects s ON s.id=c.subject_id AND s.semester_id=g.semester_id WHERE s.id=$1 AND ($3=false OR q.origin='seed') AND ${visibleQuestion}`,
-      [subject, u.group_id, u.is_demo, u.id],
+    await db.query<Candidate & { subject: string }>(
+      `SELECT s.id AS subject,q.id,q.lesson_id,q.topic,q.difficulty, (r.rating='Good' AND r.due_at>now()) recent_good, (r.due_at IS NULL OR r.due_at<=now()) due, ((r.reviewed_at AT TIME ZONE $5)::date=(now() AT TIME ZONE $5)::date) reviewed_today
+ FROM questions q LEFT JOIN card_reviews r ON r.user_id=$4 AND r.question_id=q.id JOIN lessons l ON l.id=q.lesson_id JOIN chapters c ON c.id=l.chapter_id JOIN class_groups g ON g.id=$2 JOIN subjects s ON s.id=c.subject_id AND s.semester_id=g.semester_id WHERE s.id=ANY($1::text[]) AND ($3=false OR q.origin='seed') AND ${visibleQuestion}`,
+      [subjects, u.group_id, u.is_demo, u.id, u.timezone],
     )
   ).rows;
   if (!qs.length) return [];
@@ -198,8 +212,8 @@ export async function subjectProgress(db: Db, u: Profile, subject: string) {
       `SELECT a.*, NULL::text exam FROM unnest($2::text[]) AS pool(id) CROSS JOIN LATERAL
  (SELECT question_id,session_id || chr(31) || question_id AS exercise,created_at AS at,correct,attempt_number>1 AS retry FROM question_attempts WHERE user_id=$1 AND question_id=pool.id ORDER BY created_at DESC LIMIT 24) a
  UNION ALL SELECT i.question_id,e.id AS exercise,e.submitted_at,i.correct,false,e.id FROM
- (SELECT id,submitted_at FROM mock_exams WHERE user_id=$1 AND subject_id=$3 AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 12) e JOIN mock_items i ON i.exam_id=e.id WHERE i.question_id=ANY($2) AND i.response IS NOT NULL AND i.correct IS NOT NULL`,
-      [u.id, ids, subject],
+ unnest($3::text[]) AS subjects(subject_id) CROSS JOIN LATERAL (SELECT id,submitted_at FROM mock_exams m WHERE user_id=$1 AND m.subject_id=subjects.subject_id AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 12) e JOIN mock_items i ON i.exam_id=e.id WHERE i.question_id=ANY($2) AND i.response IS NOT NULL AND i.correct IS NOT NULL`,
+      [u.id, ids, subjects],
     )
   ).rows;
   const mistakes = (
@@ -208,7 +222,7 @@ export async function subjectProgress(db: Db, u: Profile, subject: string) {
       [u.id, ids],
     )
   ).rows;
-  const groups = new Map<string, Candidate[]>();
+  const groups = new Map<string, typeof qs>();
   const evidenceByQuestion = Map.groupBy(events, (e) => e.question_id);
   const mistakesByQuestion = Map.groupBy(mistakes, (m) => m.question_id);
   for (const q of qs) {
@@ -217,13 +231,14 @@ export async function subjectProgress(db: Db, u: Profile, subject: string) {
     group.push(q);
     groups.set(key, group);
   }
-  return Array.from(groups.values(), (g) =>
-    assess(
+  return Array.from(groups.values(), (g) => ({
+    subject: g[0].subject,
+    ...assess(
       g,
       g.flatMap((q) => evidenceByQuestion.get(q.id) ?? []),
       g.flatMap((q) => mistakesByQuestion.get(q.id) ?? []),
     ),
-  ).sort(
+  })).sort(
     (a, b) =>
       a.rank - b.rank ||
       (a.score ?? 50) - (b.score ?? 50) ||
@@ -231,8 +246,18 @@ export async function subjectProgress(db: Db, u: Profile, subject: string) {
       a.topic.localeCompare(b.topic),
   );
 }
-export async function adaptivePractice(db: Db, u: Profile, subject: string) {
-  const [next] = await subjectProgress(db, u, subject);
+export async function adaptivePractice(
+  db: Db,
+  u: Profile,
+  subject: string,
+  requested?: { lesson: string; topic: string; count?: number },
+) {
+  const topics = await subjectProgress(db, u, subject);
+  const next = requested
+    ? topics.find(
+        (t) => t.lesson === requested.lesson && t.topic === requested.topic,
+      )
+    : topics[0];
   if (!next)
     throw new HttpError(
       409,
@@ -246,5 +271,12 @@ export async function adaptivePractice(db: Db, u: Profile, subject: string) {
     10,
     next.lesson,
     next.question,
+    requested
+      ? {
+          topic: next.topic,
+          count: Math.max(1, Math.min(3, requested.count ?? 1)),
+          difficulty: next.target,
+        }
+      : undefined,
   );
 }

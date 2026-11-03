@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import type { Snapshot, Mode, Task, Subject } from "@/lib/types";
 import { api } from "@/lib/api";
+import { DailyStudy } from "./daily-study";
 import { recommendedSubject } from "@/lib/recommendation";
 import {
   SubjectIcon,
@@ -541,54 +542,60 @@ function Home() {
       </div>
       <div className="home-columns">
         <div className="home-main">
-          <section className="focus-card">
-            <div className="focus-copy">
-              <span className="focus-eyebrow">
-                <span className="live-dot" />
-                {active ? "PICK UP WHERE YOU LEFT OFF" : "YOUR NEXT SMALL WIN"}
-              </span>
-              <h2>
-                Ready for
-                <br />
-                your next class?
-              </h2>
-              <p className="focus-subject">
-                {nextSubject?.name} <span>·</span>{" "}
-                {nextSubject?.next_class
-                  ? dueLabel(nextSubject.next_class, data.profile.timezone)
-                  : "Your pace"}
-              </p>
-              <p className="focus-detail">
-                {count} exercises. A little closer to “I’ve got this.”
-              </p>
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() =>
-                  start(
-                    active?.mode || "practice",
-                    nextSubject.id,
-                    10,
-                    !!active,
-                  )
-                }
-              >
-                {busy
-                  ? "Getting ready…"
-                  : active
-                    ? "Continue studying"
-                    : "Start studying"}
-                <ArrowRight size={18} />
-              </button>
-              <div className="focus-bottom">
-                <Clock3 size={14} />
-                <span>About {count * 4} minutes</span>
-                <span className="focus-divider">·</span>
-                <span>One question at a time</span>
+          {data.authenticated ? (
+            <DailyStudy key={data.profile.id} />
+          ) : (
+            <section className="focus-card">
+              <div className="focus-copy">
+                <span className="focus-eyebrow">
+                  <span className="live-dot" />
+                  {active
+                    ? "PICK UP WHERE YOU LEFT OFF"
+                    : "YOUR NEXT SMALL WIN"}
+                </span>
+                <h2>
+                  Ready for
+                  <br />
+                  your next class?
+                </h2>
+                <p className="focus-subject">
+                  {nextSubject?.name} <span>·</span>{" "}
+                  {nextSubject?.next_class
+                    ? dueLabel(nextSubject.next_class, data.profile.timezone)
+                    : "Your pace"}
+                </p>
+                <p className="focus-detail">
+                  {count} exercises. A little closer to “I’ve got this.”
+                </p>
+                <button
+                  className="primary"
+                  disabled={busy}
+                  onClick={() =>
+                    start(
+                      active?.mode || "practice",
+                      nextSubject.id,
+                      10,
+                      !!active,
+                    )
+                  }
+                >
+                  {busy
+                    ? "Getting ready…"
+                    : active
+                      ? "Continue studying"
+                      : "Start studying"}
+                  <ArrowRight size={18} />
+                </button>
+                <div className="focus-bottom">
+                  <Clock3 size={14} />
+                  <span>About {count * 4} minutes</span>
+                  <span className="focus-divider">·</span>
+                  <span>One question at a time</span>
+                </div>
               </div>
-            </div>
-            <StudyIllustration />
-          </section>
+              <StudyIllustration />
+            </section>
+          )}
           <section className="modes-section">
             <SectionHeading title="Make this moment count" />
             <div className="mode-grid">
@@ -630,7 +637,7 @@ function Home() {
               ))}
             </div>
           </section>
-          {urgent && (
+          {!data.authenticated && urgent && (
             <div className="gentle-note">
               <span className="note-icon">
                 <BookOpen size={18} />

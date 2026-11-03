@@ -61,6 +61,7 @@ export async function startSession(
   minutes = 10,
   lessonId?: string,
   preferredId?: string,
+  planned?: { topic: string; count: number; difficulty: number },
 ) {
   return db.transaction(async (tx) => {
     await assertSubject(tx, user, subject);
@@ -88,17 +89,19 @@ export async function startSession(
     const n =
       mode === "review" ? (minutes === 5 ? 2 : minutes === 20 ? 4 : 3) : 4;
     const q = await tx.query<{ id: string }>(
-      `SELECT q.id FROM questions q JOIN lessons l ON q.lesson_id=l.id JOIN chapters c ON l.chapter_id=c.id WHERE c.subject_id=$1 AND ${visibleQuestion} AND ($3::text IS NULL OR q.lesson_id=$3) AND ($4::text IS NULL OR q.id=$4) AND ($6=false OR q.origin='seed') ORDER BY
+      `SELECT q.id FROM questions q JOIN lessons l ON q.lesson_id=l.id JOIN chapters c ON l.chapter_id=c.id WHERE c.subject_id=$1 AND ${visibleQuestion} AND ($3::text IS NULL OR q.lesson_id=$3) AND ($4::text IS NULL OR q.id=$4 OR q.topic=$7::text) AND ($6=false OR q.origin='seed') ORDER BY (q.id=$4) DESC NULLS LAST,abs(q.difficulty-$8::int),
       (SELECT max(m.last_seen_at) FROM mistakes m JOIN questions mq ON mq.id=m.question_id WHERE m.user_id=$5 AND mq.lesson_id=q.lesson_id AND mq.topic=q.topic AND m.corrected=false) DESC NULLS LAST,
       EXISTS(SELECT 1 FROM question_attempts a WHERE a.user_id=$5 AND a.question_id=q.id AND a.correct=false) DESC,
       q.id LIMIT $2`,
       [
         subject,
-        preferredId ? 1 : n,
+        preferredId ? (planned?.count ?? 1) : n,
         lessonId || null,
         preferredId || null,
         user.id,
         user.is_demo,
+        planned?.topic ?? null,
+        planned?.difficulty ?? null,
       ],
     );
     if (!q.rows.length)

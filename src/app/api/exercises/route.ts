@@ -64,7 +64,19 @@ export async function POST(req: NextRequest) {
     if (body.action === "adaptive") {
       await rateLimit("adaptive:" + user.id, 30);
       return json({
-        id: await adaptivePractice(db, user, id.parse(body.subject)),
+        id: await adaptivePractice(
+          db,
+          user,
+          id.parse(body.subject),
+          z
+            .object({
+              lesson: id,
+              topic: z.string().min(1).max(500),
+              count: z.number().int().min(1).max(3).optional(),
+            })
+            .optional()
+            .parse(body.target),
+        ),
       });
     }
     const d = z

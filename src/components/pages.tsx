@@ -31,10 +31,12 @@ import {
 import { ProgressBar, SubjectIcon } from "./ui";
 import { api } from "@/lib/api";
 import { LessonResources } from "./tutor-panel";
-import { LessonPractice } from "./exercise-entry";
+import { exerciseRequest, LessonPractice } from "./exercise-entry";
 import { TopicCoach } from "./topic-coach";
 export function StudyPage({ subjectId }: { subjectId?: string }) {
-  const { data, choose, start, busy } = useStudy();
+  const { data, choose, start, busy, notify } = useStudy();
+  const router = useRouter();
+  const [preparing, setPreparing] = useState(false);
   const [search, setSearch] = useState("");
   const [lesson, setLesson] = useState<string | null>(null);
   const subject = data.subjects.find((s) => s.id === subjectId);
@@ -172,16 +174,54 @@ export function StudyPage({ subjectId }: { subjectId?: string }) {
                   })}
                 </h3>
                 <p>{subject.room}</p>
+                <p className="helper">
+                  {subject.solved} of {subject.total_questions} practice
+                  questions solved. Use your recommended topic for a short class
+                  review.
+                </p>
                 {data.tasks
-                  .filter((t) => t.subject_id === subjectId)
+                  .filter(
+                    (t) =>
+                      t.subject_id === subjectId &&
+                      !t.completed &&
+                      [
+                        "PRINT",
+                        "BRING",
+                        "CLASS_PREPARATION",
+                        "HOMEWORK",
+                      ].includes(t.type),
+                  )
+                  .slice(0, 3)
                   .map((t) => (
                     <TaskRow task={t} key={t.id} />
                   ))}
                 <button
                   className="secondary full-width"
-                  onClick={() => choose("review", subject.id)}
+                  disabled={preparing}
+                  onClick={async () => {
+                    if (data.profile.is_demo) {
+                      choose("review", subject.id);
+                      return;
+                    }
+                    if (data.active?.subject_id === subject.id) {
+                      router.push("/session/" + data.active.id);
+                      return;
+                    }
+                    setPreparing(true);
+                    try {
+                      const r = await exerciseRequest({
+                        action: "adaptive",
+                        subject: subject.id,
+                      });
+                      router.push("/session/" + r.id);
+                    } catch (e) {
+                      notify((e as Error).message);
+                    } finally {
+                      setPreparing(false);
+                    }
+                  }}
                 >
-                  Prepare me for class
+                  Prepare for class
                   <ArrowRight size={16} />
                 </button>
               </div>

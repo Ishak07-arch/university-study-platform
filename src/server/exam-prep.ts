@@ -71,8 +71,8 @@ export async function rateCard(
   )[rating];
   if (!Number.isInteger(seconds)) throw new HttpError(400, "Choose a rating.");
   await db.query(
-    `INSERT INTO card_reviews(user_id,question_id,due_at,rating) SELECT $3,q.id,now()+$5::int*interval '1 second',$6 ${pool} AND q.id=$4
- ON CONFLICT(user_id,question_id) DO UPDATE SET due_at=excluded.due_at,rating=excluded.rating WHERE card_reviews.due_at<=now()`,
+    `INSERT INTO card_reviews(user_id,question_id,due_at,rating,reviewed_at) SELECT $3,q.id,now()+$5::int*interval '1 second',$6,now() ${pool} AND q.id=$4
+ ON CONFLICT(user_id,question_id) DO UPDATE SET due_at=excluded.due_at,rating=excluded.rating,reviewed_at=excluded.reviewed_at WHERE card_reviews.due_at<=now()`,
     [subject, u.is_demo, u.id, id, seconds, rating],
   );
 }

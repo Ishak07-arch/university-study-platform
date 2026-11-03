@@ -4,6 +4,7 @@ import { currentUser } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { prepHome, solution } from "@/server/exam-prep";
 import { begin, reviewCard } from "../actions";
+import { examOutlook } from "@/server/study-plan";
 import { LessonPractice } from "@/components/exercise-entry";
 export default async function Prep({
   params,
@@ -23,10 +24,33 @@ export default async function Prep({
     ])
   ).rows[0].name;
   const recommendation = topics[0];
+  const outlook = await examOutlook(db, u, subject);
   return (
     <main className="exam-page">
       <Link href={"/study/" + subject}>← Subject</Link>
       <h1>Exam prep · {name}</h1>
+      <section className="panel">
+        <h2>Study-readiness estimate</h2>
+        {outlook.days !== null && (
+          <p>
+            {outlook.title} ·{" "}
+            {outlook.days === 0 ? "Today" : outlook.days + " days remaining"}
+          </p>
+        )}
+        <strong>
+          {outlook.score === null
+            ? "More practice needed"
+            : outlook.score + "%"}
+        </strong>
+        <p>
+          Based on topic coverage, recent answers, recurring mistakes and
+          completed mocks. Actual exam results can differ.
+        </p>
+        {!!outlook.strong.length && <p>Strong · {outlook.strong.join(", ")}</p>}
+        {!!outlook.review.length && (
+          <p>Before the exam · {outlook.review.join(", ")}</p>
+        )}
+      </section>
       <section className="panel">
         <h2>Recommended today</h2>
         {recommendation ? (
@@ -89,7 +113,14 @@ export default async function Prep({
         {card ? (
           <article key={card.id}>
             <small>{card.topic}</small>
-            <h3>{card.prompt}</h3>{card.question_type==="choice" && <ul>{card.options.map((o,i)=><li key={i}>{o}</li>)}</ul>}
+            <h3>{card.prompt}</h3>
+            {card.question_type === "choice" && (
+              <ul>
+                {card.options.map((o, i) => (
+                  <li key={i}>{o}</li>
+                ))}
+              </ul>
+            )}
             <details>
               <summary>Show answer</summary>
               <p>
