@@ -210,6 +210,14 @@ export function buildExercise(raw: unknown, source: Source, variant = 0) {
         const assets = 12000 + v * 7000,
           liabilities = 4000 + v * 2000;
         value = assets - liabilities;
+        generation.wrongValues = [
+          {
+            value: assets + liabilities,
+            category: "formula",
+            feedback:
+              "Rearrange the accounting equation: subtract liabilities from assets to find equity.",
+          },
+        ];
         prompt = `At period end a business has total assets of ${assets} and liabilities of ${liabilities}, in the same currency. Using the accounting equation, calculate total equity.`;
         explanation = `Assets = liabilities + equity, so equity = ${assets} − ${liabilities} = ${value}.`;
         topic = "Accounting equation";

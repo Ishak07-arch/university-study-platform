@@ -1,6 +1,12 @@
 export type QuestionType = "choice" | "numeric" | "text";
 export type MistakeCategory =
-  "denominator" | "sign" | "calculation" | "concept" | "answer";
+  | "formula"
+  | "debit/credit"
+  | "denominator"
+  | "sign"
+  | "calculation"
+  | "concept"
+  | "answer";
 export interface ExpectedAnswer {
   value?: number;
   tolerance?: number;

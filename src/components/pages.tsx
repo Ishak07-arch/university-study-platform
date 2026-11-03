@@ -32,6 +32,7 @@ import { ProgressBar, SubjectIcon } from "./ui";
 import { api } from "@/lib/api";
 import { LessonResources } from "./tutor-panel";
 import { LessonPractice } from "./exercise-entry";
+import { TopicCoach } from "./topic-coach";
 export function StudyPage({ subjectId }: { subjectId?: string }) {
   const { data, choose, start, busy } = useStudy();
   const [search, setSearch] = useState("");
@@ -55,22 +56,26 @@ export function StudyPage({ subjectId }: { subjectId?: string }) {
         </div>
         <div className="subject-detail-grid">
           <div>
-            <section className="subject-study-banner">
-              <span className="eyebrow">YOUR NEXT STEP</span>
-              <h2>A little practice goes a long way.</h2>
-              <p>
-                {subject.solved} of {subject.total_questions} questions solved.
-                Take the next one at your own pace.
-              </p>
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => start("practice", subject.id)}
-              >
-                {busy ? "Getting ready…" : "Start practising"}
-                <ArrowRight size={18} />
-              </button>
-            </section>
+            {!data.profile.is_demo ? (
+              <TopicCoach key={subject.id} subject={subject.id} />
+            ) : (
+              <section className="subject-study-banner">
+                <span className="eyebrow">YOUR NEXT STEP</span>
+                <h2>A little practice goes a long way.</h2>
+                <p>
+                  {subject.solved} of {subject.total_questions} questions
+                  solved. Take the next one at your own pace.
+                </p>
+                <button
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => start("practice", subject.id)}
+                >
+                  {busy ? "Getting ready…" : "Start practising"}
+                  <ArrowRight size={18} />
+                </button>
+              </section>
+            )}
             <div className="section-heading">
               <h2>Your learning path</h2>
               <span className="muted">
@@ -265,6 +270,7 @@ export function PageTitle({
   );
 }
 export function ProgressPage() {
+  const [mapSubject, setMapSubject] = useState("");
   const { data, choose } = useStudy();
   const solved = data.subjects.reduce((a, s) => a + s.solved, 0);
   return (
@@ -312,6 +318,23 @@ export function ProgressPage() {
           </span>
         </div>
       </div>
+      {data.profile.id !== "preview" && (
+        <label className="field-label">
+          Explore your weakness map
+          <select
+            value={mapSubject}
+            onChange={(e) => setMapSubject(e.target.value)}
+          >
+            <option value="">Choose a subject</option>
+            {data.subjects.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {mapSubject && <TopicCoach key={mapSubject} subject={mapSubject} map />}
       <div className="progress-columns">
         <section className="panel progress-panel">
           <div className="section-heading">

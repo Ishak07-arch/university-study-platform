@@ -9,6 +9,7 @@ export const migrationFiles = [
   "002-course-content.sql",
   "003-exercises.sql",
   "004-exam-prep.sql",
+  "005-topic-progress.sql",
 ] as const;
 export interface Migration {
   name: string;

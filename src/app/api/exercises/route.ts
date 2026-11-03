@@ -5,6 +5,7 @@ import { requireUser, requireAdmin, rateLimit, HttpError } from "@/server/auth";
 import { sameOrigin, limitedBody, contentError } from "@/server/http";
 import { saveManualQuestion, disableQuestion } from "@/server/questions";
 import { preparePractice } from "@/server/exercise-sessions";
+import { subjectProgress, adaptivePractice } from "@/server/personalisation";
 export const runtime = "nodejs";
 const id = z.string().min(1).max(100);
 const json = (value: unknown) =>
@@ -14,6 +15,15 @@ const json = (value: unknown) =>
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser();
+    const subject = req.nextUrl.searchParams.get("progress");
+    if (subject !== null) {
+      const topics = await subjectProgress(
+        await getDb(),
+        user,
+        id.parse(subject),
+      );
+      return json({ topics: topics.map(({ question, ...topic }) => topic) });
+    }
     requireAdmin(user);
     const lesson = id.parse(req.nextUrl.searchParams.get("lesson"));
     const db = await getDb();
@@ -50,6 +60,12 @@ export async function POST(req: NextRequest) {
         return json({ ok: true });
       }
       return json({ id: await saveManualQuestion(db, user, body.question) });
+    }
+    if (body.action === "adaptive") {
+      await rateLimit("adaptive:" + user.id, 30);
+      return json({
+        id: await adaptivePractice(db, user, id.parse(body.subject)),
+      });
     }
     const d = z
       .discriminatedUnion("action", [
