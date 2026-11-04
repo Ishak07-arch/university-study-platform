@@ -43,6 +43,8 @@ The build uses Next.js's supported Webpack builder because Turbopack's productio
 
 For repeatable HTTP acceptance checks, stop the normal server and run `npm run qa:setup`, then `npm run qa:serve`. In a second terminal run `npm run qa:test`. Setup creates a fresh isolated database and synthetic credentials under ignored `.data/qa-*`; it preserves `.data/folio`. For production acceptance, stop the QA server, run `npm run qa:setup` again, then `npm run qa:serve -- --production` and `npm run qa:test -- --production` in separate terminals after building. Stop QA before returning to `npm run dev`.
 
+After `qa:test`, `npm run qa:http` checks the request boundary (origin checks, body limits, authentication, role denial, the login limit and demo access). GitHub Actions (`.github/workflows/ci.yml`) runs typecheck, tests, `npm audit` and the build on Node 22 and 24, then this production-preview QA sequence. Node 22 or newer is required. In production `APP_URL` is mandatory (HTTPS, or http only for a loopback preview); reset links and CSRF checks never use the request `Host`. Demo accounts expire after 24 hours and are capped at 500; `ENABLE_DEMO` now defaults to `false` in `.env.example`.
+
 `FOLIO_DATA_DIR` optionally changes the local database/mail root (default `.data`). Demo users belong to a separate sample class and cannot receive real class reminders. The admin provisioning command reads `.env.local` and revokes existing sessions/reset links when changing an account's password or privileges.
 
 ## Application structure

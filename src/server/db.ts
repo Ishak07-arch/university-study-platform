@@ -4,6 +4,7 @@ import path from "node:path";
 import { seed } from "./seed";
 import { dataDirectory } from "./config";
 import { openHostedDatabase } from "./postgres";
+import { appOrigin } from "./config";
 
 export interface Db {
   query<T = Record<string, unknown>>(
@@ -18,6 +19,8 @@ export function getDb(): Promise<Db> {
   if (!globalDb.folioDb)
     globalDb.folioDb = (async () => {
       let db: Db;
+      // Fail fast: production must never build links or CSRF checks from Host.
+      if (process.env.NODE_ENV === "production") appOrigin("");
       if (process.env.DATABASE_URL) {
         if (
           process.env.NODE_ENV === "production" &&

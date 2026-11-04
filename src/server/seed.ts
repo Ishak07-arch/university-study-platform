@@ -373,14 +373,23 @@ export async function seed(db: Db) {
         null,
       ],
     ];
+    // Once real students belong to group-a it is a live class: never add sample
+    // reminders to it. Existing rows are left unchanged; the demo class always gets them.
+    const liveClass =
+      (
+        await tx.query(
+          "SELECT 1 FROM users WHERE group_id='group-a' AND role='student' AND is_demo=false LIMIT 1",
+        )
+      ).rows.length > 0;
     for (const t of tasks) {
       const due = new Date();
       due.setDate(due.getDate() + Number(t[5]));
       due.setUTCHours(8, 0, 0, 0);
-      await tx.query(
-        `INSERT INTO tasks(id,group_id,subject_id,title,description,type,due_at,importance,attachment) VALUES($1,'group-a',$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING`,
-        [t[0], t[1], t[2], t[3], t[4], due.toISOString(), t[6], t[7]],
-      );
+      if (!liveClass)
+        await tx.query(
+          `INSERT INTO tasks(id,group_id,subject_id,title,description,type,due_at,importance,attachment) VALUES($1,'group-a',$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING`,
+          [t[0], t[1], t[2], t[3], t[4], due.toISOString(), t[6], t[7]],
+        );
       await tx.query(
         `INSERT INTO tasks(id,group_id,subject_id,title,description,type,due_at,importance,attachment) VALUES($1,'demo-group',$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING`,
         ["demo-" + t[0], t[1], t[2], t[3], t[4], due.toISOString(), t[6], t[7]],

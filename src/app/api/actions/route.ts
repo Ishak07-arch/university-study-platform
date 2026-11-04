@@ -26,7 +26,8 @@ import {
 } from "@/server/learning";
 import type { Profile } from "@/lib/types";
 import { completeReminder, createReminder } from "@/server/tasks";
-import { dataDirectory } from "@/server/config";
+import { appOrigin, dataDirectory } from "@/server/config";
+import { assertDemoCapacity, purgeExpiredDemoUsers } from "@/server/demo";
 import { availableQuestion } from "@/server/questions";
 export const runtime = "nodejs";
 const email = z
@@ -54,9 +55,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const origin = req.headers.get("origin");
-    const expected = process.env.APP_URL
-      ? new URL(process.env.APP_URL).origin
-      : `${req.nextUrl.protocol}//${req.headers.get("host")}`;
+    const expected = appOrigin(
+      `${req.nextUrl.protocol}//${req.headers.get("host")}`,
+    );
     if (!origin || origin !== expected)
       throw new HttpError(
         403,
@@ -136,6 +137,8 @@ export async function POST(req: NextRequest) {
         );
       const existing = await currentUser();
       if (!existing) {
+        await purgeExpiredDemoUsers(db);
+        await assertDemoCapacity(db);
         const uid = randomUUID();
         await db.query(
           `INSERT INTO users(id,email,name,group_id,is_demo,daily_goal) VALUES($1,$2,'Alex Johnson','demo-group',true,40)`,

@@ -2,6 +2,9 @@
   "name": "folio-study",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build --webpack",
@@ -16,7 +19,8 @@
     "qa:serve": "tsx scripts/qa-serve.ts",
     "qa:test": "tsx scripts/acceptance-test.ts",
     "qa:content": "tsx scripts/content-acceptance.ts",
-    "qa:exercises": "tsx scripts/exercise-acceptance.ts"
+    "qa:exercises": "tsx scripts/exercise-acceptance.ts",
+    "qa:http": "tsx scripts/http-security-check.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",

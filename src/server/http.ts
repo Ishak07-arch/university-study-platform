@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HttpError } from "./auth";
+import { appOrigin } from "./config";
 export function sameOrigin(req: NextRequest) {
-  const expected = process.env.APP_URL || req.nextUrl.origin;
+  const expected = appOrigin(req.nextUrl.origin);
   if (req.headers.get("origin") !== expected)
     throw new HttpError(403, "Please reload the page and try again.");
 }

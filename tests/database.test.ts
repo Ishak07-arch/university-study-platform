@@ -274,6 +274,7 @@ test("PGlite development still initializes automatically; production preview nev
     "NODE_ENV",
     "ENABLE_DEMO",
     "FOLIO_DATA_DIR",
+    "APP_URL",
   ] as const;
   const previous = Object.fromEntries(keys.map((key) => [key, testEnv[key]]));
   let db: Db | undefined;
@@ -285,7 +286,12 @@ test("PGlite development still initializes automatically; production preview nev
     testEnv.ENABLE_DEMO = "true";
     testEnv.FOLIO_DATA_DIR = root;
     testEnv.NODE_ENV = "production";
+    delete testEnv.APP_URL;
     reset();
+    // Production never falls back to the request Host for links or CSRF checks.
+    await assert.rejects(getDb(), /APP_URL/);
+    reset();
+    testEnv.APP_URL = "http://127.0.0.1:3000";
     db = await getDb();
     assert.equal(
       (
